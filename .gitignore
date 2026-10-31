@@ -1,0 +1,10 @@
+# Course assignment: copyrighted by SoftUni, not to be reproduced
+Project-Assignment.docx
+
+# Secrets
+.env
+.env.*
+!.env.example
+
+# OS
+.DS_Store
