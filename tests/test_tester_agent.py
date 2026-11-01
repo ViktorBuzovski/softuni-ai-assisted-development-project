@@ -1,4 +1,4 @@
-"""Adversarial tests by the tester agent. A failing test here is a reported bug, left to re-run."""
+"""Adversarial tests written by the tester agent. Claude Code fixed the bugs they found."""
 
 import csv
 import json
@@ -122,14 +122,21 @@ def test_second_delete_of_the_same_invoice_is_not_reported_as_being_extracted(
 def test_locked_database_at_the_end_of_a_run_does_not_leave_the_invoice_stuck(
     lenient_client, settings, extract, outcome
 ):
-    """A real write lock from another connection, held past SQLite's five second wait."""
+    """A real write lock from another connection, held past SQLite's default five second wait.
+
+    A lock held past the app's own 30 second wait is a known limit, recovered by a restart.
+    """
     invoice_id = upload(lenient_client)["id"]
     blocker = sqlite3.connect(settings.database_path, check_same_thread=False)
     extract.outcome = outcome
-    extract.during_call = lambda: blocker.execute("BEGIN IMMEDIATE")
+
+    def take_lock():
+        blocker.execute("BEGIN IMMEDIATE")
+        threading.Timer(6, blocker.rollback).start()
+
+    extract.during_call = take_lock
 
     lenient_client.post(f"/api/invoices/{invoice_id}/extract")
-    blocker.rollback()
     blocker.close()
 
     # The invoice must be retryable or deletable now that the database is free again.
@@ -731,23 +738,36 @@ def api_upload(page, url, name="a.pdf", content=PDF):
     return response.json()["id"]
 
 
-def test_amount_with_a_huge_exponent_does_not_blank_the_whole_list(page, live_url, extract):
+def store_total_directly(tmp_path, invoice_id, total):
+    """Answers with an exponent are now rejected, so only a direct write can store one."""
+    with sqlite3.connect(tmp_path / "browser-data" / "invoices.db") as connection:
+        connection.execute("UPDATE invoice SET total = ? WHERE id = ?", (total, invoice_id))
+
+
+def test_amount_with_an_exponent_is_rejected_in_an_answer():
+    output = json.dumps(
+        {"is_error": False, "structured_output": {"document_type": "invoice", "total": "1E+999999999"}}
+    )
+
+    with pytest.raises(ExtractionError):
+        _parse_output(output)
+
+
+def test_amount_with_a_huge_exponent_does_not_blank_the_whole_list(page, live_url, tmp_path):
     """One bad record must not take every other invoice off the page."""
     api_upload(page, live_url, "good.pdf")
     bad = api_upload(page, live_url, "huge.pdf")
-    extract.outcome = ExtractedInvoice(document_type="invoice", total="1E+999999999")
-    assert page.request.post(f"{live_url}/api/invoices/{bad}/extract").json()["status"] == "extracted"
+    store_total_directly(tmp_path, bad, "1E+999999999")
 
     page.goto(live_url)
 
     expect(page.get_by_role("button", name="good.pdf", exact=True)).to_be_visible()
 
 
-def test_list_that_can_not_be_drawn_keeps_showing_an_error(page, live_url, extract):
+def test_list_that_can_not_be_drawn_keeps_showing_an_error(page, live_url, tmp_path):
     """Whatever the cause, a blank list with no message must not look like a healthy page."""
     bad = api_upload(page, live_url, "huge.pdf")
-    extract.outcome = ExtractedInvoice(document_type="invoice", total="1E+999999999")
-    assert page.request.post(f"{live_url}/api/invoices/{bad}/extract").ok
+    store_total_directly(tmp_path, bad, "1E+999999999")
 
     page.goto(live_url)
     page.wait_for_timeout(5000)

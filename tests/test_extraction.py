@@ -203,7 +203,7 @@ def test_schema_makes_the_model_answer_every_field():
 
     assert set(schema["required"]) == set(ExtractedInvoice.model_fields)
     assert schema["additionalProperties"] is False
-    line_item = schema["$defs"]["LineItem"]
+    line_item = schema["$defs"]["ExtractedLineItem"]
     assert set(line_item["required"]) == {"description", "quantity", "unit_price", "amount"}
     assert line_item["additionalProperties"] is False
 

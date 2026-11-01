@@ -1,4 +1,5 @@
 import csv
+import unicodedata
 from collections.abc import Iterable
 from io import StringIO
 
@@ -35,26 +36,31 @@ CSV_COLUMNS = (
 FORMULA_STARTS = ("=", "+", "-", "@", "\t", "\r", "\n", "＝", "＋", "－", "＠")
 
 
+def search_form(text: str) -> str:
+    """Ignore case, and the two ways Unicode can write a letter such as ü."""
+    return unicodedata.normalize("NFC", text).casefold()
+
+
 def enable_search(engine: Engine) -> None:
-    """Add a casefold function, because SQLite's own lower() only handles ASCII."""
+    """Add a search_form function, because SQLite's own lower() only handles ASCII."""
 
     @event.listens_for(engine, "connect")
-    def add_casefold(connection, _record):
+    def add_search_form(connection, _record):
         connection.create_function(
-            "casefold",
+            "search_form",
             1,
-            lambda text: None if text is None else text.casefold(),
+            lambda text: None if text is None else search_form(text),
             deterministic=True,
         )
 
 
 def record_filters(q: str, status: InvoiceStatus | None) -> list:
     filters = []
-    if search := q.strip().casefold():
+    if search := search_form(q.strip()):
         filters.append(
             or_(
                 *(
-                    func.casefold(column).contains(search, autoescape=True)
+                    func.search_form(column).contains(search, autoescape=True)
                     for column in SEARCHED_COLUMNS
                 )
             )

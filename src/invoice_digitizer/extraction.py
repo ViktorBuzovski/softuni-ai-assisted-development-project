@@ -65,7 +65,8 @@ def _run_claude(name: str, folder: str, settings: Settings) -> str:
             env=environment,
             stdin=subprocess.DEVNULL,
             capture_output=True,
-            text=True,
+            encoding="utf-8",
+            errors="replace",
             timeout=settings.extraction_timeout_seconds,
         )
     except FileNotFoundError as error:
@@ -77,6 +78,11 @@ def _run_claude(name: str, folder: str, settings: Settings) -> str:
         logger.error("claude exited with %s: %s", result.returncode, result.stderr or result.stdout)
         raise ExtractionError("The claude command failed. Check that it is logged in.")
     return result.stdout
+
+
+def _without_broken_text(answer):
+    """JSON can carry half of an emoji, which can't be stored or sent back."""
+    return json.loads(json.dumps(answer, ensure_ascii=False).encode("utf-8", "replace"))
 
 
 def _parse_output(output: str) -> ExtractedInvoice:
@@ -91,7 +97,7 @@ def _parse_output(output: str) -> ExtractedInvoice:
         raise ExtractionError("Claude reported an error while reading the file")
 
     try:
-        return ExtractedInvoice.model_validate(result.get("structured_output"))
+        return ExtractedInvoice.model_validate(_without_broken_text(result.get("structured_output")))
     except ValidationError as error:
         logger.error("claude returned invalid fields: %s", error)
         raise ExtractionError("Claude's answer didn't match the expected fields") from error

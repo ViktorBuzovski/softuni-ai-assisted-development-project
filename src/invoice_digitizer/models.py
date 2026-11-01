@@ -1,9 +1,16 @@
+import re
 from datetime import UTC, date, datetime
 from decimal import Decimal
 from enum import StrEnum
 from typing import Annotated, Any
 
-from pydantic import AfterValidator, ConfigDict, StringConstraints, WithJsonSchema
+from pydantic import (
+    AfterValidator,
+    BeforeValidator,
+    ConfigDict,
+    StringConstraints,
+    WithJsonSchema,
+)
 from sqlalchemy import JSON, String
 from sqlalchemy.types import TypeDecorator
 from sqlmodel import Field, SQLModel
@@ -35,11 +42,34 @@ class ExactDecimal(TypeDecorator):
         return None if value is None else Decimal(value)
 
 
-# The claude command parses JSON numbers as floats, which would round large amounts,
-# so the model answers with strings, and they stay exact decimals from there on.
-Amount = Annotated[
-    Decimal, WithJsonSchema({"type": "string", "pattern": r"^-?[0-9]+(\.[0-9]+)?$"})
+AMOUNT_PATTERN = r"^-?[0-9]+(\.[0-9]+)?$"
+DATE_PATTERN = r"^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+
+
+def plain_number(value: Any) -> Any:
+    """Only digits pass: a JSON number has been rounded already, and an exponent can be huge."""
+    if not isinstance(value, str) or not re.fullmatch(AMOUNT_PATTERN, value):
+        raise ValueError("Expected a plain number in a string")
+    return value
+
+
+def iso_date(value: Any) -> Any:
+    """Pydantic would otherwise read a number as a timestamp, giving a date in 1970."""
+    if not isinstance(value, str) or not re.fullmatch(DATE_PATTERN, value):
+        raise ValueError("Expected a date written as YYYY-MM-DD")
+    return value
+
+
+# Stored amounts are read without this check, because Python writes a very small decimal
+# with an exponent. The claude command parses JSON numbers as floats, which would round
+# large amounts, so the model answers with strings.
+Amount = Decimal
+AnswerAmount = Annotated[
+    Decimal,
+    BeforeValidator(plain_number),
+    WithJsonSchema({"type": "string", "pattern": AMOUNT_PATTERN}),
 ]
+AnswerDate = Annotated[date, BeforeValidator(iso_date)]
 CurrencyCode = Annotated[str, StringConstraints(pattern=r"^[A-Z]{3}$")]
 
 
@@ -63,6 +93,12 @@ class LineItem(SQLModel):
     quantity: Amount | None = None
     unit_price: Amount | None = None
     amount: Amount | None = None
+
+
+class ExtractedLineItem(LineItem):
+    quantity: AnswerAmount | None = None
+    unit_price: AnswerAmount | None = None
+    amount: AnswerAmount | None = None
 
 
 class InvoiceFields(SQLModel):
@@ -89,7 +125,13 @@ class ExtractedInvoice(InvoiceFields):
     model_config = ConfigDict(extra="forbid", json_schema_extra=require_every_field)
 
     document_type: DocumentType
+    invoice_date: AnswerDate | None = None
+    due_date: AnswerDate | None = None
     currency: CurrencyCode | None = None
+    subtotal: AnswerAmount | None = None
+    tax_amount: AnswerAmount | None = None
+    total: AnswerAmount | None = None
+    line_items: list[ExtractedLineItem] = Field(default_factory=list)
 
 
 class Invoice(InvoiceFields, table=True):

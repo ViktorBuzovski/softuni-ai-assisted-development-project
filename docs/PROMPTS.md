@@ -290,3 +290,48 @@ Use the `invoice-extraction` skill. Amounts arrive as strings with however many 
 ### Prompt 5.2: The task given to the agent
 
 Test the whole application in this repo and try to break it: upload, extraction, records, the CSV export and the web page. I haven't told you what earlier checks found, because I want your own view.
+
+**Follow-ups:**
+- The Agent tool can't use an agent file created during a session, because it reads them when the session starts. So the agent ran through `claude -p --agent tester`, as a separate process in a clean environment.
+- Its limits were also enforced by permissions: it could write only to its own test file, and reading `docs/`, git commands and live runs were denied. Its transcript shows it read nothing in `docs/`. Its one attempt at `git status` was denied.
+
+**Result:** The run took 13 minutes at `high` effort. The agent wrote 98 tests, of which 75 passed and 23 failed, and reported 11 bugs: 3 medium and 8 low. Running its tests separately gave the same 23 failures. Each finding was checked before acting on it:
+
+| Finding | Severity | Decision | Why |
+| --- | --- | --- | --- |
+| Half an emoji in a line item makes the invoice list return 500 | Medium | Fix | One bad record took the whole list down |
+| A locked database at the end of a run leaves an invoice stuck in `extracting` | Medium | Fix partly | The fix from prompt 3.3 covered one failed save, not a lasting lock. A longer wait and one shared error path cover a temporary lock. A lock held past the wait still needs a restart, which is left as a known limit |
+| An amount such as `1E+999999999` blanks the page's list | Medium | Fix | The schema forbids it, but the app never checked the answer against that rule |
+| A JSON number is rounded, and a number is accepted as a date | Low | Fix | The same gap: the rules were only sent to the model |
+| Under a non-UTF-8 locale, `Müller` is stored as `MÃ¼ller` | Low | Fix | The command's output was decoded with the locale's encoding |
+| A delete just before an extract gives a 500, and a second delete says "being extracted" | Low | Fix | Both read the record's status after it had gone |
+| An ID or offset of 2^70 gives a 500 | Low | Fix | It is too large for SQLite, so it should be a client error |
+| A stored file that has gone from disk gives a 500 | Low | Fix | It should be a 404 |
+| A name stored in decomposed Unicode isn't found by search | Low | Fix | macOS can hand over file names in that form |
+| The empty message goes stale when the filters change | Low | Fix | The list's change check ignored the filters |
+| The detail error stays after the server recovers | Low | Fix | Only opening an invoice cleared it |
+
+### Prompt 5.3: Fix the tester agent's findings
+
+**Goal:** Fix the findings from prompt 5.1, and keep the agent's tests as proof.
+
+**Context:** The decisions are in the table above. The app sends the schema to the model, but only validates the fields' types, so an answer that breaks the schema's rules can still be stored.
+
+**Requirements:**
+- Check answers against the same rules the schema sends: amounts are strings holding plain numbers, and dates are `YYYY-MM-DD` strings. Records already stored are read without this check, because Python writes very small decimals with an exponent.
+- Replace half an emoji in an answer, instead of failing the whole invoice.
+- Wait up to 30 seconds for a locked database, and send both kinds of extraction failure through one path that rolls back first.
+- Decode the command's output as UTF-8.
+- Return 404 when a record has gone during a request, or when its stored file is missing, and 422 for an ID or offset too large for SQLite.
+- Normalize Unicode in search.
+- Include the filters in the page's change check, only remember a list as drawn after it has drawn, and clear the detail error on success. Don't let an amount with a huge exponent stop the list from drawing.
+
+**Constraints:**
+- Change the agent's tests only where a fix changes how they set up their data, or where the lock case needs a different shape.
+- Add no retry queue or background job for the remaining lock case, because a restart already recovers it.
+
+**Done when:** `uv run pytest` passes with the agent's tests included, and `uv run pytest -m live` still passes on all five samples.
+
+**Follow-ups:**
+- The lock test now holds its lock for 6 seconds instead of the whole request, because no save inside a request can succeed while a lock outlasts it. The docstring records the remaining case as a known limit.
+- Two of the agent's browser tests now store the huge amount directly in the database, because the app rejects it in an answer. A new test checks that rejection.

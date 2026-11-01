@@ -1,6 +1,5 @@
 import csv
 from datetime import datetime, timedelta
-from decimal import Decimal
 from io import StringIO
 
 import pytest
@@ -38,7 +37,7 @@ def test_list_is_empty_at_first(client):
 
 def test_list_returns_full_records_newest_first(client, add_invoice):
     add_invoice("first.pdf")
-    second = add_invoice("second.pdf", total=Decimal("12.50"))
+    second = add_invoice("second.pdf", total="12.50")
 
     body = client.get("/api/invoices").json()
 
@@ -141,8 +140,8 @@ def test_csv_holds_the_header_fields_as_utf8(client, add_invoice):
         invoice_date="2026-02-03",
         supplier_name="Müller & Töchter KG",
         currency="EUR",
-        subtotal=Decimal("1430.70"),
-        total=Decimal("1691.77"),
+        subtotal="1430.70",
+        total="1691.77",
     )
 
     response = client.get("/api/invoices/export.csv")
@@ -184,7 +183,7 @@ def test_csv_neutralizes_a_formula_filename(client, add_invoice):
 
 
 def test_csv_keeps_negative_amounts_as_numbers(client, add_invoice):
-    add_invoice("credit.pdf", subtotal=Decimal("-120.00"), total=Decimal("-144.00"))
+    add_invoice("credit.pdf", subtotal="-120.00", total="-144.00")
 
     [row] = csv_rows(client.get("/api/invoices/export.csv"))
 

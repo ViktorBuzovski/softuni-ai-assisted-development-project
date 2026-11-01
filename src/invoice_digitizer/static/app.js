@@ -29,6 +29,7 @@ function formatAmount(value) {
   const match = String(value).match(/^(-?)(\d+)(?:\.(\d+))?(?:[eE]([+-]?\d+))?$/);
   if (!match) return String(value);
   const [, sign, whole, fraction = "", exponent = "0"] = match;
+  if (Math.abs(parseInt(exponent, 10)) > 100) return String(value);
   const digits = whole + fraction;
   const point = whole.length + parseInt(exponent, 10);
   let integer, decimals;
@@ -83,9 +84,8 @@ function updateExport() {
 }
 
 function renderList(data) {
-  const signature = JSON.stringify([data, selected]);
+  const signature = JSON.stringify([data, selected, filters().toString()]);
   if (signature === listSignature) return;
-  listSignature = signature;
   const focusedId = document.activeElement?.dataset.invoiceId;
   const fragment = document.createDocumentFragment();
   for (const record of data.items) {
@@ -117,6 +117,8 @@ function renderList(data) {
   $("result-count").textContent = data.total ? `${offset + 1}–${offset + data.items.length} of ${data.total} ${data.total === 1 ? "invoice" : "invoices"}` : "0 invoices";
   $("previous").disabled = offset === 0;
   $("next").disabled = offset + pageSize >= data.total;
+  // Only now, so that a list that failed to draw is tried again on the next refresh.
+  listSignature = signature;
 }
 
 async function refreshList() {
@@ -224,7 +226,10 @@ async function refreshDetail() {
   const version = ++detailVersion;
   try {
     const record = await request(`/api/invoices/${id}`);
-    if (selected === id && version === detailVersion) renderDetail(record);
+    if (selected === id && version === detailVersion) {
+      showError("detail-error");
+      renderDetail(record);
+    }
   } catch (error) {
     if (selected !== id || version !== detailVersion) return;
     if (error.status === 404) closeDetail();

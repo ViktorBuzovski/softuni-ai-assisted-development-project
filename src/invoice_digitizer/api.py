@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Annotated
 
 from fastapi import Depends, FastAPI, HTTPException, Query, Response, UploadFile
+from fastapi import Path as PathParameter
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import func
@@ -26,6 +27,8 @@ from invoice_digitizer.settings import Settings
 logger = logging.getLogger(__name__)
 
 CAN_EXTRACT = (InvoiceStatus.uploaded, InvoiceStatus.failed)
+SQLITE_MAX_INTEGER = 2**63 - 1
+InvoiceId = Annotated[int, PathParameter(le=SQLITE_MAX_INTEGER)]
 
 
 def create_app(
@@ -38,7 +41,8 @@ def create_app(
 
     engine = create_engine(
         f"sqlite:///{settings.database_path}",
-        connect_args={"check_same_thread": False},
+        # Wait out a temporary lock, such as a backup or a database browser.
+        connect_args={"check_same_thread": False, "timeout": 30},
     )
     enable_search(engine)
     SQLModel.metadata.create_all(engine)
@@ -61,13 +65,20 @@ def create_app(
 
     SessionDep = Annotated[Session, Depends(get_session)]
 
-    def get_invoice(invoice_id: int, session: SessionDep) -> Invoice:
+    def get_invoice(invoice_id: InvoiceId, session: SessionDep) -> Invoice:
         invoice = session.get(Invoice, invoice_id)
         if invoice is None:
             raise HTTPException(404, "Invoice not found")
         return invoice
 
     InvoiceDep = Annotated[Invoice, Depends(get_invoice)]
+
+    def refusal(invoice_id: int, session: Session) -> HTTPException:
+        """Say why a conditional write changed nothing, as the record may have gone since."""
+        status = session.exec(select(Invoice.status).where(Invoice.id == invoice_id)).first()
+        if status is None:
+            return HTTPException(404, "Invoice not found")
+        return HTTPException(409, f"This invoice is already {status.value}")
 
     app = FastAPI(title="Invoice Digitizer")
 
@@ -107,7 +118,7 @@ def create_app(
         q: str = "",
         status: InvoiceStatus | None = None,
         limit: Annotated[int, Query(ge=1, le=500)] = 100,
-        offset: Annotated[int, Query(ge=0)] = 0,
+        offset: Annotated[int, Query(ge=0, le=SQLITE_MAX_INTEGER)] = 0,
     ) -> dict:
         filters = record_filters(q, status)
         total = session.exec(select(func.count()).select_from(Invoice).where(*filters)).one()
@@ -138,42 +149,45 @@ def create_app(
 
     @app.get("/api/invoices/{invoice_id}/file")
     def read_invoice_file(invoice: InvoiceDep) -> FileResponse:
+        path = settings.uploads_dir / invoice.stored_name
+        if not path.exists():
+            raise HTTPException(404, "The stored file is missing")
         return FileResponse(
-            settings.uploads_dir / invoice.stored_name,
+            path,
             media_type=invoice.content_type,
             filename=invoice.filename,
             content_disposition_type="inline",
         )
 
     @app.delete("/api/invoices/{invoice_id}", status_code=204)
-    def delete_invoice(invoice: InvoiceDep, session: SessionDep) -> None:
+    def delete_invoice(invoice_id: InvoiceId, invoice: InvoiceDep, session: SessionDep) -> None:
         path = settings.uploads_dir / invoice.stored_name
 
         # One atomic delete, so an extraction can't start between a check and the delete.
         deleted = session.exec(
             delete(Invoice).where(
-                Invoice.id == invoice.id,
+                Invoice.id == invoice_id,
                 Invoice.status != InvoiceStatus.extracting,
             )
         )
         session.commit()
         if not deleted.rowcount:
-            raise HTTPException(409, "This invoice is being extracted")
+            raise refusal(invoice_id, session)
         path.unlink(missing_ok=True)
 
     @app.post("/api/invoices/{invoice_id}/extract", response_model=InvoiceRead)
-    def extract_fields(invoice_id: int, invoice: InvoiceDep, session: SessionDep) -> Invoice:
+    def extract_fields(invoice_id: InvoiceId, invoice: InvoiceDep, session: SessionDep) -> Invoice:
         path = settings.uploads_dir / invoice.stored_name
 
         # One atomic update, so two requests can't both start the same extraction.
         claim = session.exec(
             update(Invoice)
-            .where(Invoice.id == invoice.id, Invoice.status.in_(CAN_EXTRACT))
+            .where(Invoice.id == invoice_id, Invoice.status.in_(CAN_EXTRACT))
             .values(status=InvoiceStatus.extracting, extraction_error=None)
         )
         session.commit()
         if not claim.rowcount:
-            raise HTTPException(409, f"This invoice is already {invoice.status.value}")
+            raise refusal(invoice_id, session)
 
         try:
             extracted = extract(path)
@@ -181,14 +195,15 @@ def create_app(
                 raise ExtractionError("This file doesn't look like an invoice")
             invoice.record_extraction(extracted)
             session.commit()
-        except ExtractionError as error:
-            invoice.record_failure(str(error))
-            session.commit()
-        except Exception:
-            logger.exception("Extraction of invoice %s failed", invoice_id)
+        except Exception as error:
+            if isinstance(error, ExtractionError):
+                message = str(error)
+            else:
+                logger.exception("Extraction of invoice %s failed", invoice_id)
+                message = "Extraction failed unexpectedly"
             # A failed commit must be rolled back before the failure can be saved.
             session.rollback()
-            invoice.record_failure("Extraction failed unexpectedly")
+            invoice.record_failure(message)
             session.commit()
 
         session.refresh(invoice)

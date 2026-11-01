@@ -1,5 +1,3 @@
-from decimal import Decimal
-
 import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import Session, create_engine, update
@@ -15,8 +13,8 @@ EXTRACTED = ExtractedInvoice(
     invoice_date="2026-03-15",
     supplier_name="Example Supplier",
     currency="EUR",
-    total=Decimal("1234.50"),
-    line_items=[{"description": "Printing", "quantity": 2, "amount": Decimal("0.10")}],
+    total="1234.50",
+    line_items=[{"description": "Printing", "quantity": "2", "amount": "0.10"}],
 )
 
 

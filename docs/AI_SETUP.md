@@ -39,7 +39,10 @@ The running app uses Opus 5.5 (`claude-opus-5-5`) at `medium` effort. Both can b
 
 ## Agents
 
-No subagents were used.
+One agent was used, once. The `tester` agent in `.claude/agents/tester.md` tried to break the finished code by writing and running new tests.
+
+- **How it ran:** as a separate `claude -p --agent tester` process in a clean environment, with Opus 5.5 at `high` effort. A session reads agent files when it starts, so the session that created the file couldn't launch it through the Agent tool.
+- **Its limits:** permissions allowed it to write only to `tests/test_tester_agent.py`, and denied reading `docs/`, git commands and live runs, so it couldn't repeat earlier findings or use the Claude subscription for extraction.
 
 ## Skills
 
@@ -63,11 +66,14 @@ No subagents were used.
 | Review of modules 2–3 | Codex | `gpt-6-astra` | `high` | None | None | Done |
 | Module 4: Web UI | Codex | `gpt-6-astra` | `high` | None | `invoice-extraction` | Done |
 | Browser check and fixes for module 4 | Claude Code | Opus 5.5 | `xhigh` | None | `invoice-extraction` | Done |
+| Tester agent's run | Claude Code | Opus 5.5 | `high` | `tester` | None | Done |
+| Fixes after the tester agent | Claude Code | Opus 5.5 | `xhigh` | None | `invoice-extraction` | Done |
 | Exam document | Claude Code | Opus 5.5 | `xhigh` | None | `docs` | Done |
 
-## How the tools checked each other
+## How the work was checked
 
 | Check | State of the author's tests | Result |
 | --- | --- | --- |
 | Codex reviewed modules 2 and 3, written by Claude Code, in a read-only sandbox | 92 passed | 5 defects and 1 possible risk: 4 fixed, 2 left with the reasons in [prompt 3.2](PROMPTS.md#prompt-32-review-by-a-second-tool-codex) |
 | Claude Code used module 4, written by Codex, in real Chrome with real extraction on all five samples | 108 passed, 4 skipped, because Codex's sandbox couldn't start Chrome | 1 failing browser test, an oversized status badge, quantities shown as money, no way forward for an invoice left in `uploaded`, and total and status off-screen at phone width, all fixed in [prompt 4.2](PROMPTS.md#prompt-42-check-the-page-in-a-real-browser-and-fix-what-codex-couldnt-see-claude-code) |
+| The `tester` agent tried to break the finished code, without knowing what earlier checks had found | 114 passed | 11 bugs, 3 medium and 8 low. 10 fixed and 1 fixed in part in [prompt 5.3](PROMPTS.md#prompt-53-fix-the-tester-agents-findings) |
