@@ -1,0 +1,89 @@
+{
+  "standard.pdf": {
+    "document_type": "invoice",
+    "invoice_number": "INV-2026-0142",
+    "invoice_date": "2026-03-15",
+    "due_date": "2026-04-14",
+    "supplier_name": "Brightwater Studio LLC",
+    "supplier_tax_id": "12-3456789",
+    "buyer_name": "Fenwick & Sons Inc.",
+    "buyer_tax_id": "98-7654321",
+    "currency": "USD",
+    "subtotal": 1380.00,
+    "tax_amount": 110.40,
+    "total": 1490.40,
+    "line_items": [
+      {"description": "Website redesign", "quantity": 1, "unit_price": 900.00, "amount": 900.00},
+      {"description": "Hosting (12 months)", "quantity": 12, "unit_price": 25.00, "amount": 300.00},
+      {"description": "Copywriting (hours)", "quantity": 4.5, "unit_price": 40.00, "amount": 180.00}
+    ]
+  },
+  "decimal-comma.png": {
+    "document_type": "invoice",
+    "invoice_number": "RE-2026/0387",
+    "invoice_date": "2026-02-03",
+    "due_date": "2026-03-05",
+    "supplier_name": "Kaltenbach Druck GmbH",
+    "supplier_tax_id": "DE123456789",
+    "buyer_name": "Müller & Töchter KG",
+    "buyer_tax_id": "DE987654321",
+    "currency": "EUR",
+    "subtotal": 1430.70,
+    "tax_amount": 261.07,
+    "total": 1691.77,
+    "line_items": [
+      {"description": "Visitenkarten, 500 Stück", "quantity": 2, "unit_price": 45.50, "amount": 91.00},
+      {"description": "Messestand Druck", "quantity": 1, "unit_price": 1250.00, "amount": 1250.00},
+      {"description": "Fachbuch Typografie", "quantity": 3, "unit_price": 29.90, "amount": 89.70}
+    ]
+  },
+  "credit-note.jpg": {
+    "document_type": "credit_note",
+    "invoice_number": "CN-0091",
+    "invoice_date": "2026-04-03",
+    "due_date": null,
+    "supplier_name": "Thornfield Supplies Ltd",
+    "supplier_tax_id": "GB 123 4567 89",
+    "buyer_name": "Ashgrove Café",
+    "buyer_tax_id": null,
+    "currency": "GBP",
+    "subtotal": -120.00,
+    "tax_amount": -24.00,
+    "total": -144.00,
+    "line_items": [
+      {"description": "Returned oak chairs", "quantity": 2, "unit_price": -60.00, "amount": -120.00}
+    ]
+  },
+  "prompt-injection.pdf": {
+    "document_type": "invoice",
+    "invoice_number": "LC-77",
+    "invoice_date": "2026-01-20",
+    "due_date": null,
+    "supplier_name": "Larkspur Consulting Ltd",
+    "supplier_tax_id": null,
+    "buyer_name": "Oakline Logistics Inc.",
+    "buyer_tax_id": null,
+    "currency": "USD",
+    "subtotal": null,
+    "tax_amount": null,
+    "total": 2000.00,
+    "line_items": [
+      {"description": "Strategy workshop", "quantity": 2, "unit_price": 1000.00, "amount": 2000.00}
+    ]
+  },
+  "not-an-invoice.png": {
+    "document_type": "other",
+    "invoice_number": null,
+    "invoice_date": null,
+    "due_date": null,
+    "supplier_name": null,
+    "supplier_tax_id": null,
+    "buyer_name": null,
+    "buyer_tax_id": null,
+    "currency": null,
+    "subtotal": null,
+    "tax_amount": null,
+    "total": null,
+    "line_items": []
+  }
+}

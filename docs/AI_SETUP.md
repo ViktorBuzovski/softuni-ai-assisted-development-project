@@ -17,7 +17,9 @@ Claude Code's model and effort come from `~/.claude/settings.json`. Codex's mode
 
 ## Invoice extraction at runtime
 
-This proof of concept runs on a Claude Code subscription through the `claude` command, not on a paid API key. `ANTHROPIC_API_KEY` in `.env.example` is a dummy placeholder and isn't used.
+This proof of concept runs on a Claude Code subscription through the `claude` command (version 2.1.300), not on a paid API key. `ANTHROPIC_API_KEY` in `.env.example` is a dummy placeholder and isn't used, and the app removes it from the command's environment.
+
+The running app uses Opus 5.5 (`claude-opus-5-5`) at `medium` effort. Both can be changed with `EXTRACTION_MODEL` and `EXTRACTION_EFFORT`.
 
 ## Environment
 
@@ -54,6 +56,6 @@ No subagents used so far.
 | --- | --- | --- | --- | --- | --- | --- |
 | Planning | Claude Code | Opus 5.5 | `xhigh` | None | `docx` | Done |
 | Module 1: Upload and storage | Claude Code | Opus 5.5 | `xhigh` | None | None | Done |
-| Module 2: AI extraction | Claude Code | Opus 5.5 | `xhigh` | None | `claude-api`, `invoice-extraction` | In progress |
+| Module 2: AI extraction | Claude Code | Opus 5.5 | `xhigh` | None | `claude-api`, `invoice-extraction` | Done |
 | Module 3: Invoice records API | Claude Code | – | – | – | – | Not started |
 | Module 4: Web UI | Codex | – | – | – | – | Not started |

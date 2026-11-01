@@ -1,0 +1,12 @@
+body { font-family: Arial, Helvetica, sans-serif; color: #222; margin: 48px; font-size: 14px; line-height: 1.4; }
+h1 { font-size: 26px; margin: 0 0 4px; }
+h2 { font-size: 13px; text-transform: uppercase; color: #666; margin: 0 0 4px; }
+.top { display: flex; justify-content: space-between; margin-bottom: 32px; }
+.parties { display: flex; gap: 64px; margin-bottom: 32px; }
+table { border-collapse: collapse; width: 100%; margin-bottom: 24px; }
+th { text-align: left; border-bottom: 2px solid #222; padding: 6px 8px; }
+td { border-bottom: 1px solid #ccc; padding: 6px 8px; }
+.number { text-align: right; }
+.totals { width: 300px; margin-left: auto; }
+.totals td { border: 0; padding: 3px 8px; }
+.strong td { font-weight: bold; border-top: 2px solid #222; }

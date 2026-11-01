@@ -81,6 +81,9 @@ Every prompt uses these sections:
 
 **Done when:** `uv run pytest` passes, and `claude -p` and `codex exec` each list the skill when asked.
 
+**Follow-ups:**
+- The first check with `claude -p` couldn't confirm the skill, because it ran with `--tools ""`, which also removes the Skill tool that carries the list. Run again with `--tools Skill`, it listed the skill.
+
 ### Prompt 2.2: Sample invoices and extraction
 
 **Goal:** Read a stored invoice by running the `claude` command, and save the result on the invoice's record.
@@ -121,9 +124,34 @@ Every prompt uses these sections:
 - pytest covers the command's arguments, environment and working folder, each failure above, each status change, the 409s, and the startup reset.
 - `uv run pytest -m live` passes on all five samples against the real command, with a dummy key set and outside any Claude Code session.
 
+**Follow-ups:**
+- SQLModel's `Field` has no `pattern` argument, so the first test run failed on import. The currency code now uses a Pydantic `StringConstraints` type.
+- Two extra checks were run to make sure the live tests weren't passing for the wrong reason. Changing one line item's quantity makes the comparison fail, and the model can quote the hidden text in the injection sample, so it did see the text and didn't follow it.
+- The first check through a real server failed because another program on the machine already used the chosen port. Running on a free port, upload and extraction worked through `curl`, a second extraction returned 409, and the non-invoice ended as `failed`.
+
 ## Module 3: Invoice records API
 
-Not written yet.
+### Prompt 3.1: Listing, search, delete and export
+
+**Goal:** Let a client find, remove and export invoice records, so that the digitized data can be used outside this app.
+
+**Context:** Modules 1 and 2 are committed. `Invoice` holds the file details and the extracted fields. Invoice text can be in any language and is untrusted, and credit notes have negative amounts.
+
+**Requirements:**
+- Add `GET /api/invoices`, newest first, returning `{"items": [...], "total": n}`:
+  - `q` searches the filename, invoice number, supplier and buyer. It ignores case, including outside ASCII, so `MÜLLER` finds `Müller`. `%` and `_` count as plain characters.
+  - `status` filters by status, and an unknown value returns 422.
+  - `limit` (default 100, at most 500) and `offset` page through the results. `total` counts all matches, not just the page.
+- Add `GET /api/invoices/export.csv` with the same `q` and `status` filters:
+  - One row per invoice, with the file details and header fields but no line items.
+  - Encoded as UTF-8 with a byte order mark, so that Excel shows non-English text correctly.
+  - Text cells that a spreadsheet would run as a formula are neutralized. Amounts stay as plain numbers, including negative ones.
+- Add `DELETE /api/invoices/{id}`, which returns 204 and removes the record and its file. Return 409 while the invoice is `extracting`.
+- Return every timestamp as UTC with an explicit offset. SQLite drops the time zone, so a browser would read the stored value as local time.
+
+**Constraints:** Add no editing of extracted fields, because AI-read data is trusted. Add no authentication. Put the CSV and search helpers in their own small module and keep routes thin.
+
+**Done when:** pytest covers newest-first order, each searched field, non-ASCII case, `%` and `_` as plain characters, the status filter, paging with the right `total`, the CSV's encoding and contents, a formula cell, a negative amount in the CSV, delete removing the file, delete during extraction, and timestamps with an offset.
 
 ## Module 4: Web UI
 
