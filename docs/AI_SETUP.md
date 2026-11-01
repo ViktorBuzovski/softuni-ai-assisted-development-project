@@ -65,4 +65,9 @@ No subagents were used.
 | Browser check and fixes for module 4 | Claude Code | Opus 5.5 | `xhigh` | None | `invoice-extraction` | Done |
 | Exam document | Claude Code | Opus 5.5 | `xhigh` | None | `docs` | Done |
 
-Codex's sandbox couldn't start Chrome, so its browser tests were skipped during its run. They were run for the first time outside the sandbox by Claude Code.
+## How the tools checked each other
+
+| Check | State of the author's tests | Result |
+| --- | --- | --- |
+| Codex reviewed modules 2 and 3, written by Claude Code, in a read-only sandbox | 92 passed | 5 defects and 1 possible risk: 4 fixed, 2 left with the reasons in [prompt 3.2](PROMPTS.md#prompt-32-review-by-a-second-tool-codex) |
+| Claude Code used module 4, written by Codex, in real Chrome with real extraction on all five samples | 108 passed, 4 skipped, because Codex's sandbox couldn't start Chrome | 1 failing browser test, an oversized status badge, quantities shown as money, no way forward for an invoice left in `uploaded`, and total and status off-screen at phone width, all fixed in [prompt 4.2](PROMPTS.md#prompt-42-check-the-page-in-a-real-browser-and-fix-what-codex-couldnt-see-claude-code) |

@@ -4,6 +4,8 @@ Upload an invoice and get structured data back. You drop in a PDF, PNG or JPEG, 
 
 It was built for the SoftUni AI-Assisted Development exam with Claude Code and Codex. See [how each tool was used](docs/AI_SETUP.md) and [the prompts behind each module](docs/PROMPTS.md).
 
+Each tool checked the other's work. Codex [reviewed the code Claude Code wrote](docs/PROMPTS.md#prompt-32-review-by-a-second-tool-codex), and Claude Code [tested the page Codex built in a real browser](docs/PROMPTS.md#prompt-42-check-the-page-in-a-real-browser-and-fix-what-codex-couldnt-see-claude-code). Both found bugs that had got past a passing test run.
+
 ![The original invoice next to the fields read from it](docs/screenshots/invoice-detail.png)
 
 ## What it reads
