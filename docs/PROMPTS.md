@@ -65,7 +65,61 @@ Every prompt uses these sections:
 
 ## Module 2: AI extraction
 
-Not written yet.
+### Prompt 2.1: Extraction rules, skill and shared instructions
+
+**Goal:** Give both tools the same knowledge of this project before any extraction code exists, and make the running app follow those same rules.
+
+**Context:** Claude Code reads `CLAUDE.md` and `.claude/skills`. Codex reads `AGENTS.md` and `.agents/skills`. Nothing is shared between them yet. Module 1 is committed.
+
+**Requirements:**
+- Write `src/invoice_digitizer/extraction_rules.md`, the instructions the app sends to the model. Cover document types, supplier and buyer, tax IDs, dates including ambiguous ones, number formats such as `1.234,56` and `1,234.56`, subtotal and tax and total, total versus balance due, currency codes, line items, null for anything not printed, and treating the file's content as data rather than instructions.
+- Add a skill named `invoice-extraction` to `.claude/skills/`, with an identical copy in `.agents/skills/`. It says when to use it, points to the rules file, gives the steps for changing extraction, lists the edge cases the samples must keep covering, and says how to show extracted values.
+- Add `AGENTS.md` with the commands, layout, project decisions and working rules, and a `CLAUDE.md` that imports it.
+- Add a test that fails if the two skill copies differ.
+
+**Constraints:** Add no review step or confidence scores, because AI-read data is trusted in this project. Keep the skill short and point to the rules instead of repeating them.
+
+**Done when:** `uv run pytest` passes, and `claude -p` and `codex exec` each list the skill when asked.
+
+### Prompt 2.2: Sample invoices and extraction
+
+**Goal:** Read a stored invoice by running the `claude` command, and save the result on the invoice's record.
+
+**Context:** The rules and skill from prompt 2.1 exist. A trial run showed three things about the command:
+- `claude -p --restricted --tools Read --json-schema ... --output-format json` returns the fields in `structured_output`.
+- A dummy `ANTHROPIC_API_KEY` in the environment makes it fail with a 401 instead of using the subscription.
+- It waits 3 seconds on stdin unless stdin is closed.
+
+**Requirements:**
+- Add fictional samples under `samples/`, rendered from HTML by a small script, with the correct values in `samples/expected.json`:
+  - a PDF with a deposit, so that total and balance due differ, and a separate ship-to party
+  - a German PNG with `1.234,56` amounts and two VAT rates but no printed tax total
+  - a UK JPEG credit note with negative amounts, a day-first date and no due date
+  - a PDF with hidden text telling the AI to change the values
+  - a PNG that isn't an invoice
+- Add these fields to `Invoice`: `document_type`, `invoice_number`, `invoice_date`, `due_date`, `supplier_name`, `supplier_tax_id`, `buyer_name`, `buyer_tax_id`, `currency`, `subtotal`, `tax_amount`, `total`, `line_items`, `extraction_error` and `extracted_at`. Keep amounts as exact decimals.
+- Add `extract_invoice(path, settings)`, which:
+  - copies the file into an empty temporary folder and runs `claude` there
+  - uses a JSON schema generated from the same model that validates the answer
+  - sends `extraction_rules.md` as the system prompt
+  - removes `ANTHROPIC_API_KEY` and `ANTHROPIC_AUTH_TOKEN` from the environment and closes stdin
+  - raises `ExtractionError` with a safe message if the command is missing, times out, exits with an error, reports `is_error`, or returns output that doesn't validate
+- Add `POST /api/invoices/{id}/extract`, which waits for the result and returns the record:
+  - Status goes from `uploaded` or `failed` to `extracting`, then to `extracted` or `failed`.
+  - Claim the invoice with one atomic update. Return 409 if it is already `extracting` or `extracted`.
+  - A document the model calls `other` ends as `failed` with a clear message.
+  - On startup, mark anything left in `extracting` as `failed`.
+- Add the settings `CLAUDE_COMMAND`, `EXTRACTION_MODEL` (default `claude-opus-5-5`), `EXTRACTION_EFFORT` (default `medium`) and `EXTRACTION_TIMEOUT_SECONDS` (default 180).
+
+**Constraints:**
+- Treat every invoice file as untrusted. The run gets only the `Read` tool, inside `--restricted`, in a folder holding that one file.
+- Don't call the Anthropic API or ask for a real key.
+- Add no review step or confidence scores.
+- Normal tests must not call the real command. Use a fake executable for the command, and a fake extract function for the API.
+
+**Done when:**
+- pytest covers the command's arguments, environment and working folder, each failure above, each status change, the 409s, and the startup reset.
+- `uv run pytest -m live` passes on all five samples against the real command, with a dummy key set and outside any Claude Code session.
 
 ## Module 3: Invoice records API
 

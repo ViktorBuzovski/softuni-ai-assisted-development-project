@@ -29,7 +29,10 @@ This proof of concept runs on a Claude Code subscription through the `claude` co
 
 ## Project instruction files
 
-None yet.
+| File | Read by | What it holds |
+| --- | --- | --- |
+| `AGENTS.md` | Codex, and Claude Code through `CLAUDE.md` | Commands, layout, project decisions and working rules |
+| `CLAUDE.md` | Claude Code | Imports `AGENTS.md`, so both tools share one set of instructions |
 
 ## Agents
 
@@ -40,6 +43,10 @@ No subagents used so far.
 | Skill | Tool | Used for |
 | --- | --- | --- |
 | `docx` | Claude Code | Reading the assignment document |
+| `claude-api` | Claude Code | Choosing the default extraction model |
+| `invoice-extraction` | Claude Code and Codex | This project's own skill, for work on extraction and on showing extracted fields |
+
+`invoice-extraction` has one copy in `.claude/skills/` and one in `.agents/skills/`, and a test keeps them identical. Both tools were asked to confirm that they list it, using `claude -p` and `codex exec`.
 
 ## Usage by stage
 
@@ -47,6 +54,6 @@ No subagents used so far.
 | --- | --- | --- | --- | --- | --- | --- |
 | Planning | Claude Code | Opus 5.5 | `xhigh` | None | `docx` | Done |
 | Module 1: Upload and storage | Claude Code | Opus 5.5 | `xhigh` | None | None | Done |
-| Module 2: AI extraction | Claude Code | – | – | – | – | Not started |
+| Module 2: AI extraction | Claude Code | Opus 5.5 | `xhigh` | None | `claude-api`, `invoice-extraction` | In progress |
 | Module 3: Invoice records API | Claude Code | – | – | – | – | Not started |
 | Module 4: Web UI | Codex | – | – | – | – | Not started |
