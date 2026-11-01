@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Invoice Digitizer</title>
+  <link rel="stylesheet" href="/style.css">
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#invoices">Skip to invoices</a>
+  <header class="masthead"><span class="brand-mark" aria-hidden="true">ID</span><span>Invoice Digitizer</span><span class="tagline">Less paperwork. More clarity.</span></header>
+  <main>
+    <section class="intro" aria-labelledby="page-title">
+      <p class="eyebrow">YOUR DOCUMENTS, ORGANIZED</p>
+      <h1 id="page-title">Invoices made simple.</h1>
+      <p>Upload your invoices. We’ll read the details so you can find and export them.</p>
+    </section>
+    <section class="upload-panel" aria-labelledby="upload-title">
+      <div id="drop-area">
+        <span class="upload-icon" aria-hidden="true">↑</span>
+        <div><h2 id="upload-title">Drop invoices here</h2><p>PDF, PNG or JPEG · Multiple files welcome</p></div>
+        <label class="file-picker">Choose files<input id="file-input" type="file" accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg" multiple></label>
+      </div>
+      <p id="queue-status" role="status">Files are read one at a time, automatically.</p>
+      <ul id="upload-log" aria-label="Upload progress" hidden></ul>
+    </section>
+    <section id="invoices" class="records" aria-labelledby="list-title" tabindex="-1">
+      <div class="section-heading"><div><p class="eyebrow">INVOICE LIBRARY</p><h2 id="list-title">Your invoices</h2></div><a id="export-link" class="button secondary" href="/api/invoices/export.csv">Export CSV <span aria-hidden="true">↓</span></a></div>
+      <div class="filters">
+        <div class="search-field"><label for="search">Search invoices</label><input id="search" type="search" placeholder="File, supplier, buyer or invoice number" autocomplete="off"></div>
+        <div><label for="status-filter">Status</label><select id="status-filter"><option value="">All statuses</option><option value="uploaded">Uploaded</option><option value="extracting">Reading</option><option value="extracted">Extracted</option><option value="failed">Failed</option></select></div>
+      </div>
+      <p id="list-error" class="error" role="alert" hidden></p>
+      <div class="table-scroll" role="region" aria-label="Invoice results" tabindex="0">
+        <table class="invoice-table"><caption class="sr-only">Invoices, newest first. Select a file name to open its details.</caption><thead><tr><th scope="col">File name</th><th scope="col">Supplier</th><th scope="col">Invoice number</th><th scope="col">Invoice date</th><th scope="col" class="numeric">Total</th><th scope="col">Status</th></tr></thead><tbody id="invoice-rows"></tbody></table>
+        <p id="empty-state">Loading invoices…</p>
+      </div>
+      <div class="pagination"><p id="result-count" role="status"></p><div><button id="previous" class="secondary" disabled>Previous</button><button id="next" class="secondary" disabled>Next</button></div></div>
+    </section>
+    <section id="detail" class="detail" aria-labelledby="detail-title" hidden>
+      <div class="section-heading"><div><p class="eyebrow">DOCUMENT DETAILS</p><h2 id="detail-title" tabindex="-1"></h2></div><button id="close-detail" class="secondary">Close details</button></div>
+      <p id="detail-error" class="error" role="alert" hidden></p>
+      <div class="detail-grid">
+        <div class="original"><div class="preview-heading"><h3>Original file</h3><a id="original-link" target="_blank" rel="noopener">Open original ↗</a></div><div id="preview"></div></div>
+        <div class="extracted"><div class="section-heading"><h3>Extracted details</h3><span id="detail-status"></span></div>
+          <p id="extraction-error" class="error" hidden></p><p id="reading-message" role="status" hidden>Reading this invoice. Details will appear automatically.</p>
+          <dl id="fields"></dl>
+          <h3>Line items</h3>
+          <div class="table-scroll" role="region" aria-label="Line items" tabindex="0"><table class="line-table"><thead><tr><th scope="col">Description</th><th scope="col" class="numeric">Quantity</th><th scope="col" class="numeric">Unit price</th><th scope="col" class="numeric">Amount</th></tr></thead><tbody id="line-items"></tbody></table></div>
+          <p id="no-items">No line items on this record.</p>
+          <div class="actions"><button id="retry" hidden>Retry</button><button id="delete" class="danger" hidden>Delete invoice</button></div>
+        </div>
+      </div>
+    </section>
+  </main>
+  <footer>Invoice Digitizer · A clearer view of your paperwork</footer>
+</body>
+</html>

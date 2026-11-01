@@ -11,7 +11,7 @@ What was used to build this project, kept up to date as the work goes on. It rec
 | Model | Opus 5.5 (`claude-opus-5-5`) | `gpt-6-astra` |
 | Effort | `xhigh` | `high` |
 | Used for | Planning, modules 1–3 | Module 4 |
-| Status | In use | Installed and tested, not used for a module yet |
+| Status | In use | Used for module 4 |
 
 Claude Code's model and effort come from `~/.claude/settings.json`. Codex's model comes from `~/.codex/config.toml`, and its effort is set on each run with `-c model_reasoning_effort="high"`.
 
@@ -58,4 +58,6 @@ No subagents used so far.
 | Module 1: Upload and storage | Claude Code | Opus 5.5 | `xhigh` | None | None | Done |
 | Module 2: AI extraction | Claude Code | Opus 5.5 | `xhigh` | None | `claude-api`, `invoice-extraction` | Done |
 | Module 3: Invoice records API | Claude Code | Opus 5.5 | `xhigh` | None | `invoice-extraction` | Done |
-| Module 4: Web UI | Codex | – | – | – | – | Not started |
+| Module 4: Web UI | Codex | Session model (not independently verified) | Session default | None | `invoice-extraction` | Implemented; Chrome end-to-end checks need a local run |
+
+Module 4 used Codex's shell and file editing tools to build plain HTML, CSS and JavaScript, mount the static page in FastAPI, and add pytest and Playwright checks. No subagents, framework, build step, CDN or real extraction calls were used. The test suite ran with `UV_CACHE_DIR=/private/tmp/invoice-digitizer-uv-cache` because the sandbox cannot write to the usual uv cache. Chrome was invoked through Playwright with `channel="chrome"`, but the sandboxed process exited with `SIGABRT`; the browser tests report this as a skip. Run `uv run pytest tests/test_e2e.py -rs` locally to verify the browser flows. JavaScript syntax and exact number formatting were also checked with Node.

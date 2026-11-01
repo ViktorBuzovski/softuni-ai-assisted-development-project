@@ -236,3 +236,9 @@ Use the `invoice-extraction` skill. Amounts arrive as strings with however many 
 - `uv run pytest` passes with new tests in `tests/test_ui.py` for the page and static files being served.
 - `tests/test_e2e.py` drives the page in a real browser with Playwright, started with `channel="chrome"`, against a real uvicorn server that uses a fake extract function. It covers uploading, a row updating to extracted, opening the detail view, search, a failed invoice being retried, delete, and a file name containing HTML showing as plain text.
 - If the browser can't start in your sandbox, say so, and leave the tests for the person running them to check.
+
+**Follow-ups:**
+- Added Previous/Next controls so the page can reach records beyond the API's first page. Polling refreshes both the current filters and the selected detail, including extractions started before the page opened.
+- Kept decimal formatting entirely in strings, including scientific notation returned by decimal serialization, with a dash for missing values and no rounding of extra printed decimal places.
+- The first test command could not write to uv's normal cache. Using a temporary cache allowed pytest to run. Chrome then exited during Playwright startup in the sandbox, so the end-to-end tests remain available for a local run and report the launch failure as a skip.
+- Static review corrected the browser tests' exact field-name matching and absolute export URL. PDF previews use the browser's native viewer; an iframe sandbox attribute would block that viewer.

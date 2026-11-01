@@ -6,6 +6,7 @@ from typing import Annotated
 
 from fastapi import Depends, FastAPI, HTTPException, Query, Response, UploadFile
 from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy import func
 from sqlmodel import Session, SQLModel, create_engine, delete, select, update
 
@@ -193,4 +194,5 @@ def create_app(
         session.refresh(invoice)
         return invoice
 
+    app.mount("/", StaticFiles(directory=Path(__file__).parent / "static", html=True), name="ui")
     return app
