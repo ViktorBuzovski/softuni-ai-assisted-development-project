@@ -6,5 +6,13 @@ Project-Assignment.docx
 .env.*
 !.env.example
 
+# Python
+.venv/
+__pycache__/
+.pytest_cache/
+
+# Uploaded files and the local database
+data/
+
 # OS
 .DS_Store
