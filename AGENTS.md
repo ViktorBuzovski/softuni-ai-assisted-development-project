@@ -20,8 +20,9 @@ uv run uvicorn --factory invoice_digitizer.api:create_app  # serve on http://127
   - `extraction_rules.md`: the rules sent to the model
   - `records.py`: search filters and the CSV export
   - `files.py`: file type detection and file names
+  - `static/`: the web page, in plain HTML, CSS and JavaScript with no build step
   - `settings.py`: settings read from the environment and `.env`
-- `tests/`: pytest tests
+- `tests/`: pytest tests, including browser tests in `test_e2e.py` that drive Google Chrome with a fake extract function
 - `samples/`: fictional invoices with their correct values
 - `docs/PROMPTS.md`: the prompts used to build each module
 - `docs/AI_SETUP.md`: the tools, models, agents and skills used

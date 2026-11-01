@@ -113,8 +113,8 @@ function renderList(data) {
     (replacement ?? $("invoices")).focus({preventScroll: true});
   }
   $("empty-state").hidden = data.items.length > 0;
-  $("empty-state").textContent = filters().size ? "No invoices match these filters." : "Your invoices will appear here. Upload a file to get started.";
-  $("result-count").textContent = data.total ? `${offset + 1}–${offset + data.items.length} of ${data.total} invoices` : "0 invoices";
+  $("empty-state").textContent = filters().size ? "No invoices match these filters." : "No invoices yet. Upload a file to get started.";
+  $("result-count").textContent = data.total ? `${offset + 1}–${offset + data.items.length} of ${data.total} ${data.total === 1 ? "invoice" : "invoices"}` : "0 invoices";
   $("previous").disabled = offset === 0;
   $("next").disabled = offset + pageSize >= data.total;
 }
@@ -148,7 +148,8 @@ function renderDetail(record) {
   $("detail-status").replaceChildren(badge(record.status));
   showError("extraction-error", record.extraction_error);
   $("reading-message").hidden = record.status !== "extracting" && !busy;
-  $("retry").hidden = record.status !== "failed";
+  $("retry").hidden = record.status !== "failed" && record.status !== "uploaded";
+  $("retry").textContent = record.status === "failed" ? "Retry" : "Read invoice";
   $("retry").disabled = busy;
   $("delete").hidden = record.status === "extracting";
   $("delete").disabled = busy;
@@ -171,8 +172,8 @@ function renderDetail(record) {
   }));
   $("line-items").replaceChildren(...record.line_items.map((item) => {
     const row = node("tr");
-    row.append(node("td", item.description));
-    for (const key of ["quantity", "unit_price", "amount"]) row.append(node("td", formatAmount(item[key]), "numeric"));
+    row.append(node("td", item.description), node("td", item.quantity, "numeric"));
+    for (const key of ["unit_price", "amount"]) row.append(node("td", formatAmount(item[key]), "numeric"));
     return row;
   }));
   $("no-items").hidden = record.line_items.length > 0;
@@ -319,7 +320,7 @@ $("close-detail").addEventListener("click", closeDetail);
 $("retry").addEventListener("click", () => {
   if (!selectedRecord || pendingIds.has(selected)) return;
   pendingIds.add(selected);
-  const log = node("li", `${selectedRecord.filename} — Retry queued`);
+  const log = node("li", `${selectedRecord.filename} — Queued`);
   $("upload-log").append(log);
   $("upload-log").hidden = false;
   queue.push({id: selected, name: selectedRecord.filename, log});
@@ -346,4 +347,4 @@ $("delete").addEventListener("click", async () => {
 updateExport();
 refresh();
 // Also discovers jobs started in another tab, even under a status filter.
-setInterval(refresh, 1200);
+setInterval(() => { if (!document.hidden) refresh(); }, 2000);

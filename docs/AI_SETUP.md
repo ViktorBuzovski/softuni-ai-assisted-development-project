@@ -10,8 +10,8 @@ What was used to build this project, kept up to date as the work goes on. It rec
 | Version | 2.1.314 (newest installed) | `codex-cli` 0.166.0 |
 | Model | Opus 5.5 (`claude-opus-5-5`) | `gpt-6-astra` |
 | Effort | `xhigh` | `high` |
-| Used for | Planning, modules 1–3 | Module 4 |
-| Status | In use | Used for module 4 |
+| Used for | Planning, modules 1–3, fixes after each review | Module 4, and the review of modules 2–3 |
+| Sandbox | None | `read-only` for the review, `workspace-write` for module 4 |
 
 Claude Code's model and effort come from `~/.claude/settings.json`. Codex's model comes from `~/.codex/config.toml`, and its effort is set on each run with `-c model_reasoning_effort="high"`.
 
@@ -27,6 +27,7 @@ The running app uses Opus 5.5 (`claude-opus-5-5`) at `medium` effort. Both can b
 - VS Code
 - Python 3.12, managed with uv 0.13.6
 - Node 22.23.3, used to install Codex
+- Google Chrome, driven by Playwright 1.64.1 for the browser tests and for rendering the sample invoices
 - GitHub CLI 2.101.0
 
 ## Project instruction files
@@ -58,6 +59,8 @@ No subagents used so far.
 | Module 1: Upload and storage | Claude Code | Opus 5.5 | `xhigh` | None | None | Done |
 | Module 2: AI extraction | Claude Code | Opus 5.5 | `xhigh` | None | `claude-api`, `invoice-extraction` | Done |
 | Module 3: Invoice records API | Claude Code | Opus 5.5 | `xhigh` | None | `invoice-extraction` | Done |
-| Module 4: Web UI | Codex | Session model (not independently verified) | Session default | None | `invoice-extraction` | Implemented; Chrome end-to-end checks need a local run |
+| Review of modules 2–3 | Codex | `gpt-6-astra` | `high` | None | None | Done |
+| Module 4: Web UI | Codex | `gpt-6-astra` | `high` | None | `invoice-extraction` | Done |
+| Browser check and fixes for module 4 | Claude Code | Opus 5.5 | `xhigh` | None | `invoice-extraction` | Done |
 
-Module 4 used Codex's shell and file editing tools to build plain HTML, CSS and JavaScript, mount the static page in FastAPI, and add pytest and Playwright checks. No subagents, framework, build step, CDN or real extraction calls were used. The test suite ran with `UV_CACHE_DIR=/private/tmp/invoice-digitizer-uv-cache` because the sandbox cannot write to the usual uv cache. Chrome was invoked through Playwright with `channel="chrome"`, but the sandboxed process exited with `SIGABRT`; the browser tests report this as a skip. Run `uv run pytest tests/test_e2e.py -rs` locally to verify the browser flows. JavaScript syntax and exact number formatting were also checked with Node.
+Codex's sandbox couldn't start Chrome, so its browser tests were skipped during its run. They were run for the first time outside the sandbox by Claude Code.

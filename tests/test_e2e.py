@@ -151,6 +151,7 @@ def test_upload_search_detail_retry_delete_and_untrusted_text(page, live_server)
     expect(field(page, "Total")).to_have_text("-99,999,999,999,999.99 EUR")
     expect(field(page, "Due date")).to_have_text("—")
     expect(page.locator("#line-items")).to_contain_text("0.1234500")
+    expect(page.locator("#line-items td.numeric").first).to_have_text("2")
     expect(page.locator("#line-items td").last).to_have_text("—")
     expect(page.locator("#fields b, #detail-title img, #line-items script")).to_have_count(0)
     expect(page.locator("#line-items")).to_contain_text("<script>alert(1)</script>")
@@ -236,13 +237,46 @@ def test_drop_upload_mobile_layout_and_number_precision(page, live_server):
     expect(page.locator("#detail")).to_be_visible()
     assert page.evaluate("document.documentElement.scrollWidth <= window.innerWidth")
     original = page.locator(".original").bounding_box()
-    details = page.locator(".extracted").bounding_box()
+    details = page.locator(".extracted-panel").bounding_box()
     assert details["y"] >= original["y"] + original["height"]
     assert page.evaluate("""() => [null, '0', '1250', '-1430.70', '1.23450',
         '999999999999999999.99', '1E-7', '-1.20E+3'].map(formatAmount)""") == [
         "—", "0.00", "1,250.00", "-1,430.70", "1.23450",
         "999,999,999,999,999,999.99", "0.0000001", "-1,200.00",
     ]
+
+
+def test_status_badges_are_compact_and_the_phone_layout_shows_total_and_status(page, live_server):
+    url, extract = live_server
+    extract.release.set()
+    page.goto(url)
+    page.locator("#file-input").set_input_files([upload_file("a-long-invoice-file-name.pdf")])
+    row = invoice_row(page, "a-long-invoice-file-name.pdf")
+    expect(row).to_contain_text("Extracted")
+    assert row.locator(".status").bounding_box()["height"] < 32
+
+    page.set_viewport_size({"width": 375, "height": 812})
+    expect(row.locator("td").nth(1)).to_be_hidden()
+    expect(row.locator("td").nth(4)).to_be_visible()
+    expect(row.locator(".status")).to_be_visible()
+    assert page.locator(".table-scroll").first.evaluate("e => e.scrollWidth <= e.clientWidth")
+    assert row.locator(".status").bounding_box()["x"] + row.locator(".status").bounding_box()["width"] <= 375
+
+
+def test_uploaded_invoice_can_be_read_from_the_detail_view(page, live_server):
+    url, extract = live_server
+    extract.release.set()
+    response = page.request.post(f"{url}/api/invoices", multipart={"file": upload_file("left-behind.pdf")})
+    assert response.status == 201
+    page.goto(url)
+    page.get_by_role("button", name="left-behind.pdf", exact=True).click()
+    expect(page.locator("#detail-status")).to_have_text("Uploaded")
+
+    page.get_by_role("button", name="Read invoice", exact=True).click()
+
+    expect(page.locator("#detail-status")).to_have_text("Extracted")
+    expect(field(page, "Total")).to_have_text("1,430.70 EUR")
+    expect(page.get_by_role("button", name="Read invoice", exact=True)).to_be_hidden()
 
 
 def test_paging_and_deleting_the_last_result_on_a_page(page, live_server):
@@ -267,4 +301,4 @@ def test_paging_and_deleting_the_last_result_on_a_page(page, live_server):
     expect(page.locator("#result-count")).to_have_text("1–25 of 25 invoices")
     page.get_by_label("Search invoices").fill("invoice-12")
     expect(page.locator("#invoice-rows tr")).to_have_count(1)
-    expect(page.locator("#result-count")).to_have_text("1–1 of 1 invoices")
+    expect(page.locator("#result-count")).to_have_text("1–1 of 1 invoice")

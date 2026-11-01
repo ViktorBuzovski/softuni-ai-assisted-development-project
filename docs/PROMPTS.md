@@ -242,3 +242,24 @@ Use the `invoice-extraction` skill. Amounts arrive as strings with however many 
 - Kept decimal formatting entirely in strings, including scientific notation returned by decimal serialization, with a dash for missing values and no rounding of extra printed decimal places.
 - The first test command could not write to uv's normal cache. Using a temporary cache allowed pytest to run. Chrome then exited during Playwright startup in the sandbox, so the end-to-end tests remain available for a local run and report the launch failure as a skip.
 - Static review corrected the browser tests' exact field-name matching and absolute export URL. PDF previews use the browser's native viewer; an iframe sandbox attribute would block that viewer.
+
+### Prompt 4.2: Check the page in a real browser, and fix what Codex couldn't see (Claude Code)
+
+**Goal:** Use the page in a real browser with real extraction, and fix what the sandboxed run couldn't show.
+
+**Context:** Codex built the page from prompt 4.1, but its sandbox blocked Chrome, so it skipped the browser tests and never saw the page. Run outside the sandbox, one browser test fails. Using all five samples through the page shows that extraction and the layout mostly work, and also shows the problems below.
+
+**Requirements:**
+- The panel class `.extracted` also matches the status badge `status extracted`, which makes that badge a large padded box and makes the failing test's locator ambiguous. Rename the panel class.
+- Quantities appear as money, such as `2.00`. Show them as the document prints them.
+- An invoice left in `uploaded` has no way forward, for example if the tab closed right after the upload. Show a `Read invoice` button, using the retry path.
+- Remove the marketing copy nobody asked for (tagline, hero heading, eyebrow labels and footer), so that the page opens on the upload area and the list.
+- At phone width, only the file name and supplier are visible without scrolling sideways. Show the file name, total and status, and leave the other columns to the detail view.
+- Poll every 2 seconds instead of 1.2, and not while the tab is hidden.
+- Correct the Codex row in `docs/AI_SETUP.md`, using the model and effort shown in its run log.
+
+**Constraints:** Don't change the API. Keep plain HTML, CSS and JavaScript with no build step.
+
+**Done when:** `uv run pytest` passes with the browser tests running rather than skipped, including new checks for the badge size, the quantity, the `Read invoice` button and the phone layout, and new screenshots show the fixes with real extraction.
+
+**Follow-ups:** The new screenshots also showed `1–1 of 1 invoices`, so the count now uses the singular for one invoice.
