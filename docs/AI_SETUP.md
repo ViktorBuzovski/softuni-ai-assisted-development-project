@@ -1,6 +1,6 @@
 # AI tooling and setup
 
-What was used to build this project, kept up to date as the work goes on. It records only what was actually run.
+What was used to build this project. It records only what was actually run.
 
 ## Tools
 
@@ -10,7 +10,7 @@ What was used to build this project, kept up to date as the work goes on. It rec
 | Version | 2.1.314 (newest installed) | `codex-cli` 0.166.0 |
 | Model | Opus 5.5 (`claude-opus-5-5`) | `gpt-6-astra` |
 | Effort | `xhigh` | `high` |
-| Used for | Planning, modules 1–3, fixes after each review | Module 4, and the review of modules 2–3 |
+| Used for | Planning, modules 1–3, fixes after each review, the exam document | Module 4, and the review of modules 2–3 |
 | Sandbox | None | `read-only` for the review, `workspace-write` for module 4 |
 
 Claude Code's model and effort come from `~/.claude/settings.json`. Codex's model comes from `~/.codex/config.toml`, and its effort is set on each run with `-c model_reasoning_effort="high"`.
@@ -39,7 +39,7 @@ The running app uses Opus 5.5 (`claude-opus-5-5`) at `medium` effort. Both can b
 
 ## Agents
 
-No subagents used so far.
+No subagents were used.
 
 ## Skills
 
@@ -48,6 +48,7 @@ No subagents used so far.
 | `docx` | Claude Code | Reading the assignment document |
 | `claude-api` | Claude Code | Choosing the default extraction model |
 | `invoice-extraction` | Claude Code and Codex | This project's own skill, for work on extraction and on showing extracted fields |
+| `docs` | Claude Code | Writing the exam document |
 
 `invoice-extraction` has one copy in `.claude/skills/` and one in `.agents/skills/`, and a test keeps them identical. Both tools were asked to confirm that they list it, using `claude -p` and `codex exec`.
 
@@ -62,5 +63,6 @@ No subagents used so far.
 | Review of modules 2–3 | Codex | `gpt-6-astra` | `high` | None | None | Done |
 | Module 4: Web UI | Codex | `gpt-6-astra` | `high` | None | `invoice-extraction` | Done |
 | Browser check and fixes for module 4 | Claude Code | Opus 5.5 | `xhigh` | None | `invoice-extraction` | Done |
+| Exam document | Claude Code | Opus 5.5 | `xhigh` | None | `docs` | Done |
 
 Codex's sandbox couldn't start Chrome, so its browser tests were skipped during its run. They were run for the first time outside the sandbox by Claude Code.
