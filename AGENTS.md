@@ -37,6 +37,8 @@ uv run uvicorn --factory invoice_digitizer.api:create_app  # serve on http://127
 
 Use the `invoice-extraction` skill for any work on extraction or on showing extracted fields.
 
+The `tester` agent in `.claude/agents/` tries to break the code by writing and running new tests. It reports bugs and doesn't fix them.
+
 ## Working rules
 
 - Write a module's prompt in `docs/PROMPTS.md` before starting it, and record corrections under it as follow-ups.

@@ -263,3 +263,30 @@ Use the `invoice-extraction` skill. Amounts arrive as strings with however many 
 **Done when:** `uv run pytest` passes with the browser tests running rather than skipped, including new checks for the badge size, the quantity, the `Read invoice` button and the phone layout, and new screenshots show the fixes with real extraction.
 
 **Follow-ups:** The new screenshots also showed `1–1 of 1 invoices`, so the count now uses the singular for one invoice.
+
+## Tester agent
+
+### Prompt 5.1: Define a tester agent and run it (Claude Code)
+
+**Goal:** Add a tester agent that looks at the finished code with fresh context and tries to break it, and run it once for real.
+
+**Context:** All four modules are finished and 114 tests pass. Claude Code and Codex have already checked each other's work. A subagent starts with none of this session's context, so it can look at the code without knowing what has been found.
+
+**Requirements:**
+- Define the agent in `.claude/agents/tester.md`. It writes and runs tests, and reports what fails.
+- Run it once on the whole application, using the task in prompt 5.2.
+- Check each finding before acting on it, as in prompt 3.2. Fix the real ones and keep the tests that show them.
+- Record what it found in `docs/AI_SETUP.md` and the exam document.
+
+**Constraints:**
+- The agent changes nothing outside its own test file.
+- It doesn't read `docs/` or the git history, and isn't told what earlier checks found.
+- It doesn't call the real `claude` command.
+- If it finds nothing, record that, and don't present a minor point as a finding.
+- The exam document stays within 6 pages.
+
+**Done when:** `uv run pytest` passes, and the docs record what the agent really found.
+
+### Prompt 5.2: The task given to the agent
+
+Test the whole application in this repo and try to break it: upload, extraction, records, the CSV export and the web page. I haven't told you what earlier checks found, because I want your own view.
