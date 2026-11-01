@@ -4,9 +4,10 @@ from functools import partial
 from pathlib import Path
 from typing import Annotated
 
-from fastapi import Depends, FastAPI, HTTPException, UploadFile
+from fastapi import Depends, FastAPI, HTTPException, Query, Response, UploadFile
 from fastapi.responses import FileResponse
-from sqlmodel import Session, SQLModel, create_engine, update
+from sqlalchemy import func
+from sqlmodel import Session, SQLModel, create_engine, delete, select, update
 
 from invoice_digitizer.extraction import ExtractionError, extract_invoice
 from invoice_digitizer.files import detect_file_type, display_name, generate_stored_name
@@ -14,9 +15,11 @@ from invoice_digitizer.models import (
     DocumentType,
     ExtractedInvoice,
     Invoice,
+    InvoicePage,
     InvoiceRead,
     InvoiceStatus,
 )
+from invoice_digitizer.records import enable_search, invoices_to_csv, record_filters
 from invoice_digitizer.settings import Settings
 
 logger = logging.getLogger(__name__)
@@ -36,6 +39,7 @@ def create_app(
         f"sqlite:///{settings.database_path}",
         connect_args={"check_same_thread": False},
     )
+    enable_search(engine)
     SQLModel.metadata.create_all(engine)
 
     # Nothing is still running after a restart, so these would otherwise stay stuck.
@@ -96,6 +100,37 @@ def create_app(
         session.refresh(invoice)
         return invoice
 
+    @app.get("/api/invoices", response_model=InvoicePage)
+    def list_invoices(
+        session: SessionDep,
+        q: str = "",
+        status: InvoiceStatus | None = None,
+        limit: Annotated[int, Query(ge=1, le=500)] = 100,
+        offset: Annotated[int, Query(ge=0)] = 0,
+    ) -> dict:
+        filters = record_filters(q, status)
+        total = session.exec(select(func.count()).select_from(Invoice).where(*filters)).one()
+        items = session.exec(
+            select(Invoice).where(*filters).order_by(Invoice.id.desc()).limit(limit).offset(offset)
+        ).all()
+        return {"items": items, "total": total}
+
+    # Declared before /{invoice_id}, which would otherwise try to read this as an id.
+    @app.get("/api/invoices/export.csv")
+    def export_invoices(
+        session: SessionDep,
+        q: str = "",
+        status: InvoiceStatus | None = None,
+    ) -> Response:
+        invoices = session.exec(
+            select(Invoice).where(*record_filters(q, status)).order_by(Invoice.id.desc())
+        ).all()
+        return Response(
+            invoices_to_csv(invoices),
+            media_type="text/csv; charset=utf-8",
+            headers={"Content-Disposition": 'attachment; filename="invoices.csv"'},
+        )
+
     @app.get("/api/invoices/{invoice_id}", response_model=InvoiceRead)
     def read_invoice(invoice: InvoiceDep) -> Invoice:
         return invoice
@@ -108,6 +143,22 @@ def create_app(
             filename=invoice.filename,
             content_disposition_type="inline",
         )
+
+    @app.delete("/api/invoices/{invoice_id}", status_code=204)
+    def delete_invoice(invoice: InvoiceDep, session: SessionDep) -> None:
+        path = settings.uploads_dir / invoice.stored_name
+
+        # One atomic delete, so an extraction can't start between a check and the delete.
+        deleted = session.exec(
+            delete(Invoice).where(
+                Invoice.id == invoice.id,
+                Invoice.status != InvoiceStatus.extracting,
+            )
+        )
+        session.commit()
+        if not deleted.rowcount:
+            raise HTTPException(409, "This invoice is being extracted")
+        path.unlink(missing_ok=True)
 
     @app.post("/api/invoices/{invoice_id}/extract", response_model=InvoiceRead)
     def extract_fields(invoice: InvoiceDep, session: SessionDep) -> Invoice:

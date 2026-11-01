@@ -57,5 +57,5 @@ No subagents used so far.
 | Planning | Claude Code | Opus 5.5 | `xhigh` | None | `docx` | Done |
 | Module 1: Upload and storage | Claude Code | Opus 5.5 | `xhigh` | None | None | Done |
 | Module 2: AI extraction | Claude Code | Opus 5.5 | `xhigh` | None | `claude-api`, `invoice-extraction` | Done |
-| Module 3: Invoice records API | Claude Code | – | – | – | – | Not started |
+| Module 3: Invoice records API | Claude Code | Opus 5.5 | `xhigh` | None | `invoice-extraction` | Done |
 | Module 4: Web UI | Codex | – | – | – | – | Not started |

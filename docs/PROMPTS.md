@@ -153,6 +153,25 @@ Every prompt uses these sections:
 
 **Done when:** pytest covers newest-first order, each searched field, non-ASCII case, `%` and `_` as plain characters, the status filter, paging with the right `total`, the CSV's encoding and contents, a formula cell, a negative amount in the CSV, delete removing the file, delete during extraction, and timestamps with an offset.
 
+### Prompt 3.2: Review by a second tool (Codex)
+
+**Goal:** Have a different tool look for real bugs in the extraction and records code that Claude Code wrote.
+
+**Context:** `git diff deb8003 HEAD` holds modules 2 and 3. `AGENTS.md` lists the project decisions. The tests are in `tests/`, and `uv run pytest -m live` calls the real model, so don't run that one.
+
+**Requirements:**
+- Look for defects that would give wrong results on real invoices, lose or corrupt data, leave files or records behind, or leave an invoice stuck.
+- Look for races between requests, and for ways that a malicious invoice file or filename could cause harm, through the model, the CSV or a path.
+- For each finding, give the file and line, a concrete scenario that triggers it, the severity and a suggested fix.
+
+**Constraints:**
+- Read only. Don't change any file.
+- Don't report style or naming.
+- Don't report what `AGENTS.md` rules out, such as missing authentication, migrations or a review step.
+- If you aren't sure that something is a real bug, say so and say how to confirm it.
+
+**Done when:** You have given a list ranked by severity, or said plainly that you found nothing.
+
 ## Module 4: Web UI
 
 Not written yet.

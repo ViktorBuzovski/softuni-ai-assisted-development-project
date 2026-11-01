@@ -3,7 +3,7 @@ from decimal import Decimal
 from enum import StrEnum
 from typing import Annotated, Any
 
-from pydantic import ConfigDict, StringConstraints, WithJsonSchema
+from pydantic import AfterValidator, ConfigDict, StringConstraints, WithJsonSchema
 from sqlalchemy import JSON, String
 from sqlalchemy.types import TypeDecorator
 from sqlmodel import Field, SQLModel
@@ -38,6 +38,14 @@ class ExactDecimal(TypeDecorator):
 # The model answers with JSON numbers, which become exact decimals from there on.
 Amount = Annotated[Decimal, WithJsonSchema({"type": "number"})]
 CurrencyCode = Annotated[str, StringConstraints(pattern=r"^[A-Z]{3}$")]
+
+
+def as_utc(value: datetime) -> datetime:
+    """SQLite drops the time zone, and every stored time is UTC."""
+    return value.replace(tzinfo=UTC) if value.tzinfo is None else value
+
+
+UtcDatetime = Annotated[datetime, AfterValidator(as_utc)]
 
 
 def require_every_field(schema: dict[str, Any]) -> None:
@@ -112,5 +120,10 @@ class InvoiceRead(InvoiceFields):
     size_bytes: int
     status: InvoiceStatus
     extraction_error: str | None
-    uploaded_at: datetime
-    extracted_at: datetime | None
+    uploaded_at: UtcDatetime
+    extracted_at: UtcDatetime | None
+
+
+class InvoicePage(SQLModel):
+    items: list[InvoiceRead]
+    total: int

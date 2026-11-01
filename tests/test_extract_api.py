@@ -20,31 +20,10 @@ EXTRACTED = ExtractedInvoice(
 )
 
 
-class FakeExtract:
-    """Stands in for the real extraction and returns or raises what each test sets."""
-
-    def __init__(self):
-        self.outcome = EXTRACTED
-        self.paths = []
-        self.during_call = None
-
-    def __call__(self, path):
-        self.paths.append(path)
-        if self.during_call:
-            self.during_call()
-        if isinstance(self.outcome, Exception):
-            raise self.outcome
-        return self.outcome
-
-
 @pytest.fixture
-def extract():
-    return FakeExtract()
-
-
-@pytest.fixture
-def client(settings, extract):
-    return TestClient(create_app(settings, extract))
+def extract(extract):
+    extract.outcome = EXTRACTED
+    return extract
 
 
 @pytest.fixture

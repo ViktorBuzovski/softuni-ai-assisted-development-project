@@ -18,6 +18,7 @@ uv run uvicorn --factory invoice_digitizer.api:create_app  # serve on http://127
   - `models.py`: database tables and API schemas
   - `extraction.py`: runs the `claude` command
   - `extraction_rules.md`: the rules sent to the model
+  - `records.py`: search filters and the CSV export
   - `files.py`: file type detection and file names
   - `settings.py`: settings read from the environment and `.env`
 - `tests/`: pytest tests
