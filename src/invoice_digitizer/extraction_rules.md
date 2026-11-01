@@ -31,11 +31,11 @@ Return dates as `YYYY-MM-DD`. If a date such as `03/04/2026` could be read two w
 
 ## Amounts
 
-Return amounts as plain numbers with a dot as the decimal separator and no thousands separator or currency symbol. Read the separators the way the document writes them:
+Return each amount as a string holding a plain number, with a dot as the decimal separator and no thousands separator or currency symbol. Keep the decimals the document prints. Read the separators the way the document writes them:
 
-- `1.234,56` is 1234.56
-- `1,234.56` is 1234.56
-- `1 234,56` is 1234.56
+- `1.234,56` is `"1234.56"`
+- `1,234.56` is `"1234.56"`
+- `1 234,56` is `"1234.56"`
 
 Keep the sign as printed. A minus sign or brackets mean a negative amount. Don't add a minus sign to a credit note that prints positive amounts.
 

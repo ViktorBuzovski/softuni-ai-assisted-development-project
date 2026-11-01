@@ -35,8 +35,11 @@ class ExactDecimal(TypeDecorator):
         return None if value is None else Decimal(value)
 
 
-# The model answers with JSON numbers, which become exact decimals from there on.
-Amount = Annotated[Decimal, WithJsonSchema({"type": "number"})]
+# The claude command parses JSON numbers as floats, which would round large amounts,
+# so the model answers with strings, and they stay exact decimals from there on.
+Amount = Annotated[
+    Decimal, WithJsonSchema({"type": "string", "pattern": r"^-?[0-9]+(\.[0-9]+)?$"})
+]
 CurrencyCode = Annotated[str, StringConstraints(pattern=r"^[A-Z]{3}$")]
 
 
@@ -90,6 +93,9 @@ class ExtractedInvoice(InvoiceFields):
 
 
 class Invoice(InvoiceFields, table=True):
+    # A reused id would make a stale request act on a different invoice.
+    __table_args__ = {"sqlite_autoincrement": True}
+
     id: int | None = Field(default=None, primary_key=True)
     filename: str
     stored_name: str

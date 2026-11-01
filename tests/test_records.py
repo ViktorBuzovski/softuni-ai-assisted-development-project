@@ -164,7 +164,9 @@ def test_csv_holds_the_header_fields_as_utf8(client, add_invoice):
     assert "line_items" not in row
 
 
-@pytest.mark.parametrize("text", ["=1+1", "+1", "-1", "@SUM(A1)", "\tx"])
+@pytest.mark.parametrize(
+    "text", ["=1+1", "+1", "-1", "@SUM(A1)", "\tx", "\n=1+1", "＝1+1", "＋1", "－1", "＠SUM(A1)"]
+)
 def test_csv_neutralizes_formula_text(client, add_invoice, text):
     add_invoice("a.pdf", supplier_name=text)
 
@@ -214,6 +216,16 @@ def test_delete_removes_the_record_and_the_file(client, settings, add_invoice):
     assert client.get(f"/api/invoices/{invoice['id']}/file").status_code == 404
     assert client.get("/api/invoices").json()["total"] == 0
     assert list(settings.uploads_dir.iterdir()) == []
+
+
+def test_deleted_id_is_never_reused(client, add_invoice):
+    deleted = add_invoice("old.pdf")["id"]
+    client.delete(f"/api/invoices/{deleted}")
+
+    new = add_invoice("new.pdf")["id"]
+
+    assert new != deleted
+    assert client.get(f"/api/invoices/{deleted}").status_code == 404
 
 
 def test_delete_unknown_invoice_returns_404(client):

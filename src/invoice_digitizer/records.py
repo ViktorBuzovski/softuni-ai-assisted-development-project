@@ -32,7 +32,7 @@ CSV_COLUMNS = (
     "uploaded_at",
     "extracted_at",
 )
-FORMULA_STARTS = ("=", "+", "-", "@", "\t", "\r")
+FORMULA_STARTS = ("=", "+", "-", "@", "\t", "\r", "\n", "＝", "＋", "－", "＠")
 
 
 def enable_search(engine: Engine) -> None:

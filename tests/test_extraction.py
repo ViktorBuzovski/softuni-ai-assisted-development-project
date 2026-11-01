@@ -1,5 +1,6 @@
 import json
 import os
+import re
 from datetime import date
 from decimal import Decimal
 
@@ -36,11 +37,11 @@ FIELDS = {
     "buyer_name": "Example Buyer",
     "buyer_tax_id": None,
     "currency": "EUR",
-    "subtotal": 1430.7,
-    "tax_amount": 261.07,
-    "total": 1691.77,
+    "subtotal": "1430.70",
+    "tax_amount": "261.07",
+    "total": "1691.77",
     "line_items": [
-        {"description": "Printing", "quantity": 2, "unit_price": 45.5, "amount": 91},
+        {"description": "Printing", "quantity": "2", "unit_price": "45.50", "amount": "91.00"},
     ],
 }
 
@@ -89,7 +90,13 @@ def test_returns_the_fields_as_exact_values(invoice_file, settings):
     assert extracted.due_date is None
     assert extracted.supplier_name == "Müller & Töchter KG"
     assert extracted.total == Decimal("1691.77")
-    assert extracted.line_items[0].unit_price == Decimal("45.5")
+    assert str(extracted.line_items[0].unit_price) == "45.50"
+
+
+def test_large_amounts_stay_exact(invoice_file, settings, monkeypatch):
+    monkeypatch.setenv("FAKE_CLAUDE_OUTPUT", result_with({**FIELDS, "total": "99999999999999.99"}))
+
+    assert str(extract_invoice(invoice_file, settings).total) == "99999999999999.99"
 
 
 def test_run_gets_only_the_read_tool_and_a_locked_down_session(invoice_file, settings, record_file):
@@ -201,7 +208,10 @@ def test_schema_makes_the_model_answer_every_field():
     assert line_item["additionalProperties"] is False
 
 
-def test_schema_asks_for_amounts_as_numbers():
+def test_schema_asks_for_amounts_as_strings():
     schema = json.loads(SCHEMA)
 
-    assert {"type": "number"} in schema["properties"]["total"]["anyOf"]
+    [amount, _] = schema["properties"]["total"]["anyOf"]
+    assert amount["type"] == "string"
+    assert re.fullmatch(amount["pattern"], "-1234.50")
+    assert not re.fullmatch(amount["pattern"], "1,234.50")

@@ -161,7 +161,7 @@ def create_app(
         path.unlink(missing_ok=True)
 
     @app.post("/api/invoices/{invoice_id}/extract", response_model=InvoiceRead)
-    def extract_fields(invoice: InvoiceDep, session: SessionDep) -> Invoice:
+    def extract_fields(invoice_id: int, invoice: InvoiceDep, session: SessionDep) -> Invoice:
         path = settings.uploads_dir / invoice.stored_name
 
         # One atomic update, so two requests can't both start the same extraction.
@@ -179,14 +179,17 @@ def create_app(
             if extracted.document_type == DocumentType.other:
                 raise ExtractionError("This file doesn't look like an invoice")
             invoice.record_extraction(extracted)
+            session.commit()
         except ExtractionError as error:
             invoice.record_failure(str(error))
+            session.commit()
         except Exception:
-            logger.exception("Extraction of invoice %s failed", invoice.id)
+            logger.exception("Extraction of invoice %s failed", invoice_id)
+            # A failed commit must be rolled back before the failure can be saved.
+            session.rollback()
             invoice.record_failure("Extraction failed unexpectedly")
+            session.commit()
 
-        session.add(invoice)
-        session.commit()
         session.refresh(invoice)
         return invoice
 

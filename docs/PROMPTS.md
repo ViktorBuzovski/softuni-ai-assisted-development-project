@@ -172,6 +172,67 @@ Every prompt uses these sections:
 
 **Done when:** You have given a list ranked by severity, or said plainly that you found nothing.
 
+**Result:** Codex reported five defects and one possible risk, and changed no files. Each one was checked before acting on it:
+
+| Finding | Decision | Why |
+| --- | --- | --- |
+| A deleted invoice's ID is reused, so a stale request can act on the wrong invoice | Fix | Confirmed with no race needed: delete the newest invoice, and the next upload gets its ID |
+| A failed final database write leaves an invoice stuck in `extracting` | Fix | Retry and delete both return 409 until a restart |
+| Large amounts are rounded, and the suggested fix is `json.loads(..., parse_float=Decimal)` | Fix differently | The rounding is real, but the raw output of the `claude` command already holds the rounded number, so the suggested fix can't help |
+| The CSV misses formula prefixes such as a line feed or a full-width `＝` | Fix | A small change with no downside |
+| A second server process marks running extractions as failed | Leave | This proof of concept runs as one process, so the rule is now written down instead |
+| A failed file delete leaves the file behind | Leave | The record was removed as asked, and only an unused file remains |
+
+### Prompt 3.3: Fix the review's findings
+
+**Goal:** Fix the findings from prompt 3.2 that are real for this proof of concept.
+
+**Context:** The decisions are in the table above. With the real command, a schema asking for a number returned `99999999999999.98` for `99999999999999.99`, and a schema asking for a string returned it exactly.
+
+**Requirements:**
+- Never reuse an invoice ID. Use SQLite's autoincrement.
+- If saving the result fails, roll back and mark the invoice `failed`.
+- Ask the model for amounts as strings holding a plain number, in the schema and in `extraction_rules.md`, so that they stay exact and keep their printed decimals.
+- Add a line feed and the full-width `＝`, `＋`, `－` and `＠` to the CSV formula prefixes.
+- Add the one-process rule to `AGENTS.md`.
+
+**Constraints:** Don't change the two findings marked to leave.
+
+**Done when:** pytest covers each fix, and `uv run pytest -m live` still passes on all five samples.
+
 ## Module 4: Web UI
 
-Not written yet.
+### Prompt 4.1: Web interface (Codex)
+
+**Goal:** Give a person a simple page to upload invoices, watch them being read, and find and export the results, without using the API by hand.
+
+**Context:** The API is finished and is described in `src/invoice_digitizer/api.py`:
+- `POST /api/invoices`
+- `POST /api/invoices/{id}/extract`, which waits for the result and returns the record
+- `GET /api/invoices?q=&status=&limit=&offset=`
+- `GET /api/invoices/{id}`
+- `GET /api/invoices/{id}/file`
+- `DELETE /api/invoices/{id}`
+- `GET /api/invoices/export.csv?q=&status=`
+
+Use the `invoice-extraction` skill. Amounts arrive as strings with however many decimals the document prints, such as `1430.70` or `1250`, and null means the value isn't on the document.
+
+**Requirements:**
+- Serve one page at `/` from `src/invoice_digitizer/static/` (`index.html`, `app.js`, `style.css`), mounted in `create_app` without changing any `/api` route.
+- **Upload:** a drop area and a file picker that accept several PDF, PNG and JPEG files. Each file is uploaded and then extracted automatically, one at a time. A rejected file shows the server's message and doesn't stop the others.
+- **List:** a table of invoices, newest first, with file name, supplier, invoice number, invoice date, total with currency, and status. It has a search box with a short delay, a status filter, and an export link that uses the current filters.
+- **Status:** a clear label for each status. A row in `extracting` updates by itself, including one that was already running when the page was opened.
+- **Detail:** selecting a row shows the original file next to the extracted fields and line items. A PDF appears in an `iframe` and an image in an `img`. A failed invoice shows its error and a Retry button. Any invoice not being extracted has a Delete button that asks for confirmation first.
+- **Number display:** show amounts with at least two decimals and a thousands separator, without floating-point arithmetic on the values. Show a credit note's negative total clearly. Show a null value as a dash, never as 0.
+- **Layout:** clean and readable from phone width to desktop, usable with a keyboard, with visible focus and enough contrast.
+
+**Constraints:**
+- Use plain HTML, CSS and JavaScript, with no framework, build step or CDN, so that one `uvicorn` command runs everything.
+- Invoice text and file names are untrusted. Set them with `textContent` and never build HTML from them.
+- Add no review step, confidence scores or editing of extracted fields, because AI-read data is trusted.
+- Change only what the page needs. Don't change the extraction or records code.
+
+**Done when:**
+- `uv run pytest` passes with new tests in `tests/test_ui.py` for the page and static files being served.
+- `tests/test_e2e.py` drives the page in a real browser with Playwright, started with `channel="chrome"`, against a real uvicorn server that uses a fake extract function. It covers uploading, a row updating to extracted, opening the detail view, search, a failed invoice being retried, delete, and a file name containing HTML showing as plain text.
+- If the browser can't start in your sandbox, say so, and leave the tests for the person running them to check.

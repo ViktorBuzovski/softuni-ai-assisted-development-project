@@ -117,6 +117,25 @@ def test_unexpected_error_marks_the_invoice_failed_without_details(client, extra
     assert invoice["extraction_error"] == "Extraction failed unexpectedly"
 
 
+def test_failed_save_marks_the_invoice_failed(client, invoice_id, monkeypatch):
+    real_commit = Session.commit
+    commits = []
+
+    def fail_second_commit(self):
+        commits.append(self)
+        if len(commits) == 2:
+            raise RuntimeError("database is locked")
+        real_commit(self)
+
+    monkeypatch.setattr(Session, "commit", fail_second_commit)
+
+    invoice = client.post(f"/api/invoices/{invoice_id}/extract").json()
+
+    assert invoice["status"] == "failed"
+    assert invoice["extraction_error"] == "Extraction failed unexpectedly"
+    assert invoice["total"] is None
+
+
 def test_document_that_is_not_an_invoice_is_marked_failed(client, extract, invoice_id):
     extract.outcome = ExtractedInvoice(document_type="other")
 

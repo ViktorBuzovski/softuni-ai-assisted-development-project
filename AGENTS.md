@@ -30,6 +30,7 @@ uv run uvicorn --factory invoice_digitizer.api:create_app  # serve on http://127
 
 - **AI-read invoice data is trusted.** Don't add a review step, confidence scores or a validation gate.
 - **It is a proof of concept.** Don't add authentication, migrations or Docker.
+- **It runs as one server process.** Startup marks any invoice left in `extracting` as failed, so a second process would disturb running extractions. Don't use `--workers` or `--reload` while extractions are running.
 - **Extraction runs on a Claude subscription through the `claude` command.** `ANTHROPIC_API_KEY` is a dummy placeholder. Don't ask for a real key or call the Anthropic API.
 - **Invoice files are untrusted input.** Keep the extraction run limited to reading one file, and never render invoice text as HTML.
 
